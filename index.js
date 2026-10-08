@@ -5,12 +5,17 @@ const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require(
 // const { token } = require('./config.json');
 require('dotenv').config();
 const token = process.env.DISCORD_TOKEN;
+const { getVoiceConnection } = require('@discordjs/voice');
+const tts = require('./tts');
+const ttsPlayer = require('./tts-player');
 
 // Create a new client instance
 const client = new Client({
 	intents: [
 		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildVoiceStates
+		GatewayIntentBits.GuildVoiceStates,
+		GatewayIntentBits.GuildMessages,
+		GatewayIntentBits.MessageContent
 	]
 });
 
@@ -68,4 +73,66 @@ client.on(Events.InteractionCreate, async (interaction) => {
 			});
 		}
 	}
+});
+
+client.ttsConfig = new Collection();
+
+const configPath = path.join(
+	__dirname,
+	'config/tts-config.json'
+);
+
+const savedConfig = JSON.parse(
+	fs.readFileSync(configPath, 'utf8')
+);
+
+for (const [guildId, config] of Object.entries(savedConfig)) {
+	client.ttsConfig.set(guildId, config);
+}
+
+client.on(Events.MessageCreate, async (message) => {
+	if (message.author.bot) return;
+
+	const config = client.ttsConfig.get(message.guild?.id);
+
+	if (!config) return;
+
+	if (message.channel.id !== config.textChannelId) return;
+
+	const voiceChannel = message.guild.members.me?.voice.channel;
+
+	if (!voiceChannel) {
+		console.log('บอทไม่ได้อยู่ในห้อง');
+		return;
+	}
+
+	const connection = getVoiceConnection(message.guild.id);
+
+	if (!connection) {
+		return;
+	}
+
+	ttsPlayer.connect(message.guild.id, connection);
+
+	const otherMembers = voiceChannel.members.filter(
+		member => !member.user.bot
+	);
+
+	if (otherMembers.size === 0) {
+		console.log('ไม่มีคนอยู่ในห้อง');
+		return;
+	}
+
+	console.log('บอทอยู่ห้อง:', voiceChannel.name);
+	console.log('มีคนอื่นอยู่:', otherMembers.size);
+	console.log('ข้อความที่ต้องอ่าน:', message.content);
+
+	const audioPath = await tts.speak(message.content);
+
+	console.log('สร้าง TTS แล้ว:', audioPath);
+
+	ttsPlayer.addToQueue(
+		message.guild.id,
+		() => tts.speak(message.content)
+	);
 });

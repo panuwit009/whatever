@@ -1,7 +1,8 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, Collection  } = require('discord.js');
 
 const {
 	joinVoiceChannel,
+	getVoiceConnection,
 	createAudioPlayer,
 	createAudioResource,
 	VoiceConnectionStatus,
@@ -23,11 +24,24 @@ module.exports = {
 
 		await interaction.reply('มาละ');
 
+		const oldConnection = getVoiceConnection(channel.guild.id);
+
+		if (oldConnection) {
+			oldConnection.destroy();
+		}
+
 		const connection = joinVoiceChannel({
 			channelId: channel.id,
 			guildId: channel.guild.id,
 			adapterCreator: channel.guild.voiceAdapterCreator,
 		});
+
+		interaction.client.voiceConnections ??= new Collection();
+
+		interaction.client.voiceConnections.set(
+			channel.guild.id,
+			connection
+		);
 
 		const player = createAudioPlayer();
 
@@ -54,20 +68,20 @@ module.exports = {
 			if (connection.state.status === VoiceConnectionStatus.Ready) {
 				clearInterval(checkConnection);
 
-				console.log('Voice connection พร้อมแล้ว');
+				// console.log('Voice connection พร้อมแล้ว');
 
 				const audioPath = path.join(
 					__dirname,
 					'../sounds/join.mp3'
 				);
 
-				console.log('ไฟล์:', audioPath);
+				// console.log('ไฟล์:', audioPath);
 
 				const resource = createAudioResource(audioPath);
 
 				player.play(resource);
 
-				console.log('สั่งให้เล่นเสียงแล้ว');
+				// console.log('สั่งให้เล่นเสียงแล้ว');
 			}
 		}, 500);
 	},
