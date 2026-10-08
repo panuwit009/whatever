@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const configPath = path.join(
 	__dirname,
-	'../../config/tts-config.json'
+	'../../tts/config.json'
 );
 
 module.exports = {
@@ -19,6 +19,13 @@ module.exports = {
 		),
 
 	async execute(interaction) {
+		if (process.env.TTS_ENABLED !== 'true') {
+			await interaction.reply(
+				'TTS ยังไม่ได้เปิดใช้งาน กรุณาตั้งค่า TTS_ENABLED=true ในไฟล์ .env แล้ว restart bot'
+			);
+			return;
+		}
+
 		const textChannel = interaction.options.getChannel('text_channel');
 
 		const config = JSON.parse(

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, Collection  } = require('discord.js');
+const { SlashCommandBuilder, Collection } = require('discord.js');
 
 const {
 	joinVoiceChannel,
@@ -10,6 +10,17 @@ const {
 
 const path = require('path');
 
+function playJoinSound(player) {
+	const audioPath = path.join(
+		__dirname,
+		'../sounds/join.mp3'
+	);
+
+	const resource = createAudioResource(audioPath);
+
+	player.play(resource);
+}
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('join')
@@ -19,7 +30,9 @@ module.exports = {
 		const channel = interaction.member.voice.channel;
 
 		if (!channel) {
-			return interaction.reply('มึงต้องเข้าห้องก่อนกูถึงจะตามมึงได้');
+			return interaction.reply(
+				'มึงต้องเข้าห้องก่อนกูถึงจะตามมึงได้'
+			);
 		}
 
 		await interaction.reply('มาละ');
@@ -68,20 +81,8 @@ module.exports = {
 			if (connection.state.status === VoiceConnectionStatus.Ready) {
 				clearInterval(checkConnection);
 
-				// console.log('Voice connection พร้อมแล้ว');
-
-				const audioPath = path.join(
-					__dirname,
-					'../sounds/join.mp3'
-				);
-
-				// console.log('ไฟล์:', audioPath);
-
-				const resource = createAudioResource(audioPath);
-
-				player.play(resource);
-
-				// console.log('สั่งให้เล่นเสียงแล้ว');
+				// เปิดบรรทัดนี้เมื่อต้องการให้เล่นเสียงตอน join
+				// playJoinSound(player);
 			}
 		}, 500);
 	},

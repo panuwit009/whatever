@@ -1,8 +1,11 @@
+const path = require('node:path');
 const { spawn } = require('node:child_process');
+
+const workerPath = path.join(__dirname, 'worker.py');
 
 const python = spawn(
 	'wayu-env\\Scripts\\python.exe',
-	['-X', 'utf8', 'tts_worker.py'],
+	['-X', 'utf8', workerPath],
 	{
 		stdio: ['pipe', 'pipe', 'inherit'],
 	}
