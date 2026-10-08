@@ -1,2 +1,5 @@
 .env
 node_modules
+
+wayu-env/
+*.wav
