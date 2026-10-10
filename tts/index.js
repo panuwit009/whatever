@@ -5,6 +5,7 @@ const ttsPlayer = require('./player');
 
 function handleMessage(message, ttsConfig) {
 	if (process.env.TTS_ENABLED !== 'true') {
+		console.log("env ได้ false")
 		return;
 	}
 	// 1. ไม่อ่านข้อความจาก bot
