@@ -5,6 +5,7 @@ const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require(
 // const { token } = require('./config.json');
 require('dotenv').config();
 const token = process.env.DISCORD_TOKEN;
+const mt5Service = require("./commands/utility/xm/mt5Service");
 const tts = require('./tts');
 
 // Create a new client instance
@@ -71,6 +72,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 			});
 		}
 	}
+});
+
+mt5Service.start().catch((error) => {
+  console.error("[MT5] เริ่มต้นไม่สำเร็จ:", error.message);
 });
 
 client.ttsConfig = new Collection();

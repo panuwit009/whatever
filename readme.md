@@ -11,6 +11,7 @@ Discord Bot สำหรับอ่านข้อความจาก Text Ch
 * FFmpeg
 * Git
 * Discord Bot Token
+* Metatrade 5 พร้อม login
 
 > แนะนำให้ใช้ Python 3.11 เพราะ environment ปัจจุบันของโปรเจกต์ใช้ Python 3.11
 
