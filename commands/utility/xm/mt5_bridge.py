@@ -8,6 +8,16 @@ STARTUP_RETRIES = 12
 PRICE_RETRIES = 5
 RETRY_DELAY = 3
 
+TIMEFRAME_MAP = {
+    "M1": mt5.TIMEFRAME_M1,
+    "M5": mt5.TIMEFRAME_M5,
+    "M15": mt5.TIMEFRAME_M15,
+    "M30": mt5.TIMEFRAME_M30,
+    "H1": mt5.TIMEFRAME_H1,
+    "H4": mt5.TIMEFRAME_H4,
+    "D1": mt5.TIMEFRAME_D1,
+}
+
 
 def send(data):
     print(json.dumps(data, ensure_ascii=False), flush=True)
@@ -117,6 +127,77 @@ def get_symbols():
         for symbol in symbols
     ]
 
+
+def get_candles(symbol, timeframe="M15", count=10):
+    """ดึงข้อมูลแท่งเทียนจาก MT5 เรียงจากเก่าไปใหม่"""
+
+    symbol = str(symbol).strip().upper()
+    timeframe = str(timeframe).strip().upper()
+    count = int(count)
+
+    if timeframe not in TIMEFRAME_MAP:
+        raise RuntimeError(
+            f"ไม่รองรับ timeframe {timeframe} "
+            f"เลือกได้: {', '.join(TIMEFRAME_MAP.keys())}"
+        )
+
+    if count < 1 or count > 500:
+        raise RuntimeError(
+            "จำนวนแท่งเทียนต้องอยู่ระหว่าง 1 ถึง 500"
+        )
+
+    info = mt5.symbol_info(symbol)
+
+    if info is None:
+        raise RuntimeError(f"ไม่พบ symbol {symbol}")
+
+    if not mt5.symbol_select(symbol, True):
+        raise RuntimeError(
+            f"เปิดใช้งาน {symbol} ไม่สำเร็จ: {mt5.last_error()}"
+        )
+
+    rates = mt5.copy_rates_from_pos(
+        symbol,
+        TIMEFRAME_MAP[timeframe],
+        0,
+        count
+    )
+
+    if rates is None:
+        raise RuntimeError(
+            f"ดึงแท่งเทียนไม่สำเร็จ: {mt5.last_error()}"
+        )
+
+    if len(rates) == 0:
+        raise RuntimeError(
+            f"ไม่พบข้อมูลแท่งเทียนของ {symbol}"
+        )
+
+    # เรียงตามเวลา จากเก่าไปใหม่
+    rates = sorted(rates, key=lambda rate: rate["time"])
+
+    candles = []
+
+    for rate in rates:
+        candles.append({
+            "time": int(rate["time"]),
+            "open": float(rate["open"]),
+            "high": float(rate["high"]),
+            "low": float(rate["low"]),
+            "close": float(rate["close"]),
+            "tick_volume": int(rate["tick_volume"]),
+            "spread": int(rate["spread"]),
+            "real_volume": int(rate["real_volume"]),
+        })
+
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "digits": info.digits,
+        "count": len(candles),
+        "candles": candles,
+    }
+
 def get_price_with_retry(symbol):
     """ดึงราคาและพยายามเชื่อมต่อใหม่หากเกิดข้อผิดพลาด"""
     last_error = None
@@ -172,6 +253,13 @@ def main():
             elif action == "price":
                 symbol = request.get("symbol", "GOLD")
                 result = get_price_with_retry(symbol)
+
+            elif action == "candles":
+                symbol = request.get("symbol", "GOLD")
+                timeframe = request.get("timeframe", "M15")
+                count = request.get("count", 10)
+
+                result = get_candles(symbol, timeframe, count)
 
             else:
                 raise RuntimeError("ไม่รู้จักคำสั่งที่ได้รับ")

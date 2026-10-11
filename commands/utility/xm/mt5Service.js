@@ -238,6 +238,63 @@ async function getSymbols() {
   });
 }
 
+
+async function getCandles(
+  symbol = "GOLD",
+  timeframe = "M15",
+  count = 10
+) {
+  await start();
+
+  if (!child || !ready) {
+    throw new Error("MT5 ยังไม่พร้อมใช้งาน");
+  }
+
+  const currentChild = child;
+  const id = nextId++;
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      reject(
+        new Error("MT5 ใช้เวลาดึงแท่งเทียนนานเกิน 2 นาที")
+      );
+    }, 120000);
+
+    pending.set(id, {
+      resolve,
+      reject,
+      timer,
+    });
+
+    currentChild.stdin.write(
+      JSON.stringify({
+        id,
+        action: "candles",
+        symbol,
+        timeframe,
+        count,
+      }) + "\n",
+      (error) => {
+        if (!error) return;
+
+        const request = pending.get(id);
+        if (!request) return;
+
+        clearTimeout(request.timer);
+        pending.delete(id);
+
+        request.reject(
+          new Error(
+            `ส่งคำขอดึงแท่งเทียนไม่สำเร็จ: ${error.message}`
+          )
+        );
+      }
+    );
+  });
+}
+
+
 function isReady() {
   return ready && child !== null;
 }
@@ -278,6 +335,7 @@ module.exports = {
   start,
   getPrice,
   getSymbols,
+  getCandles,
   getSelectedSymbols,
   saveSelectedSymbols,
   isReady,

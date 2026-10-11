@@ -144,7 +144,42 @@ module.exports = {
       subcommand
         .setName("price")
         .setDescription("แสดงราคาของสินทรัพย์ที่เลือก")
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("candles")
+        .setDescription("ดึงข้อมูลแท่งเทียนจาก MT5")
+        .addStringOption((option) =>
+          option
+            .setName("symbol")
+            .setDescription("ชื่อ Symbol เช่น GOLD หรือ BTCUSD")
+            .setRequired(true)
+        )
+        .addStringOption((option) =>
+          option
+            .setName("timeframe")
+            .setDescription("ช่วงเวลาของแท่งเทียน")
+            .setRequired(true)
+            .addChoices(
+              { name: "M1 (1 นาที)", value: "M1" },
+              { name: "M5 (5 นาที)", value: "M5" },
+              { name: "M15 (15 นาที)", value: "M15" },
+              { name: "M30 (30 นาที)", value: "M30" },
+              { name: "H1 (1 ชั่วโมง)", value: "H1" },
+              { name: "H4 (4 ชั่วโมง)", value: "H4" },
+              { name: "D1 (1 วัน)", value: "D1" }
+            )
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName("count")
+            .setDescription("จำนวนแท่งเทียน 1–20")
+            .setMinValue(1)
+            .setMaxValue(20)
+            .setRequired(true)
+        )
     ),
+
 
   async execute(interaction) {
     const subcommand = interaction.options.getSubcommand();
@@ -413,5 +448,87 @@ module.exports = {
         );
       }
     }
+
+    
+    // -----------------------------
+    // /xm candles
+    // -----------------------------
+    if (subcommand === "candles") {
+      await interaction.deferReply();
+
+      try {
+        const symbol = interaction.options
+          .getString("symbol")
+          .trim();
+
+        const timeframe = interaction.options
+          .getString("timeframe");
+
+        const count = interaction.options
+          .getInteger("count");
+
+        await interaction.editReply(
+          `กำลังดึงแท่งเทียน ${symbol} ${timeframe} จำนวน ${count} แท่ง...`
+        );
+
+        const result = await mt5Service.getCandles(
+          symbol,
+          timeframe,
+          count
+        );
+
+        const format = (value) =>
+          Number(value).toFixed(result.digits);
+
+        const embed = new EmbedBuilder()
+          .setColor(0x3498DB)
+          .setTitle(
+            `${result.symbol} • ${result.timeframe}`
+          )
+          .setDescription(
+            `แท่งเทียน ${result.count} แท่ง\n` +
+            `เรียงจากเก่าไปใหม่\n` +
+            `หมายเหตุ: แท่งล่าสุดอาจยังไม่ปิด`
+          );
+
+        for (const candle of result.candles) {
+          const candleTime = new Date(
+            candle.time * 1000
+          ).toLocaleString("th-TH", {
+            timeZone: "Asia/Bangkok",
+          });
+
+          embed.addFields({
+            name: candleTime,
+            value: [
+              `**Open:** ${format(candle.open)}`,
+              `**High:** ${format(candle.high)}`,
+              `**Low:** ${format(candle.low)}`,
+              `**Close:** ${format(candle.close)}`,
+              `**Tick Volume:** ${candle.tick_volume}`,
+            ].join("\n"),
+            inline: true,
+          });
+        }
+
+        embed
+          .setFooter({
+            text: "XM MT5 • ข้อมูลจากบัญชีที่เชื่อมต่อ",
+          })
+          .setTimestamp();
+
+        await interaction.editReply({
+          content: "",
+          embeds: [embed],
+        });
+      } catch (error) {
+        console.error("[XM Candles]", error);
+
+        await interaction.editReply(
+          `ดึงแท่งเทียนไม่สำเร็จ: ${error.message}`
+        );
+      }
+    }
+
   },
 };
