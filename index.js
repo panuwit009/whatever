@@ -6,6 +6,7 @@ const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require(
 require('dotenv').config();
 const token = process.env.DISCORD_TOKEN;
 const mt5Service = require("./commands/utility/xm/mt5Service");
+const xmAlertService = require("./commands/utility/xm/alertService");
 const tts = require('./tts');
 
 // Create a new client instance
@@ -21,8 +22,15 @@ const client = new Client({
 // When the client is ready, run this code (only once).
 // The distinction between `client: Client<boolean>` and `readyClient: Client<true>` is important for TypeScript developers.
 // It makes some properties non-nullable.
-client.once(Events.ClientReady, (readyClient) => {
+client.once(Events.ClientReady, async(readyClient) => {
 	console.log(`พร้อม! ตอนนนี้ login แล้วด้วยชื่อ ${readyClient.user.tag}`);
+
+	try {
+        await xmAlertService.start(readyClient);
+        console.log("[XM Alert] ระบบแจ้งเตือนพร้อมทำงาน");
+    } catch (error) {
+        console.error("[XM Alert] เริ่มระบบไม่สำเร็จ:", error);
+    }
 });
 
 // Log in to Discord with your client's token

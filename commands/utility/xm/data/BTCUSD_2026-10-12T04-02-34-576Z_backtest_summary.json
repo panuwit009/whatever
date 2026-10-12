@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2026-10-12T04:02:34.579Z",
+  "symbol": "BTCUSD",
+  "options": {
+    "zoneToleranceATR": 0.25,
+    "forwardBars": 20,
+    "reactionATR": 1,
+    "breakBufferATR": 0.1
+  },
+  "commonCutoffUnix": 1791788400,
+  "timeframes": {
+    "M15": {
+      "stats": {
+        "commonCutoffISO": "2026-10-12T07:00:00.000Z",
+        "candles": 499,
+        "confirmedSwings": 98,
+        "levelsTouchedWithinHorizon": 67,
+        "reactionTargetReached": 38,
+        "touchedButNoTarget": 3,
+        "closesThroughLevel": 22,
+        "noTouch": 31,
+        "reactionRateAmongTouched": 0.5671641791044776,
+        "breakRateAmongTouched": 0.3283582089552239,
+        "ambiguousRateAmongTouched": 0.05970149253731343,
+        "unambiguousTouchedCases": 63,
+        "reactionRateExcludingAmbiguous": 0.6031746031746031,
+        "breakRateExcludingAmbiguous": 0.3492063492063492,
+        "fullForwardWindowCases": 95,
+        "fullWindowTouchedCases": 66,
+        "fullWindowUnambiguousTouchedCases": 62,
+        "fullWindowReactionRateExcludingAmbiguous": 0.5967741935483871,
+        "fullWindowBreakRateExcludingAmbiguous": 0.3548387096774194,
+        "note": "Descriptive first-event test, not a profitable trading-strategy backtest. Swing level is available only at confirmationTime; same-candle target/break is marked ambiguous because OHLC cannot establish intrabar order; recent cases may have fewer than the full forwardBars."
+      },
+      "outcomes": {
+        "reaction_target_reached": 38,
+        "touch_no_target": 3,
+        "break_close": 22,
+        "no_touch": 31,
+        "ambiguous_same_bar": 4
+      }
+    },
+    "H1": {
+      "stats": {
+        "commonCutoffISO": "2026-10-12T07:00:00.000Z",
+        "candles": 119,
+        "confirmedSwings": 22,
+        "levelsTouchedWithinHorizon": 12,
+        "reactionTargetReached": 6,
+        "touchedButNoTarget": 1,
+        "closesThroughLevel": 5,
+        "noTouch": 10,
+        "reactionRateAmongTouched": 0.5,
+        "breakRateAmongTouched": 0.4166666666666667,
+        "ambiguousRateAmongTouched": 0,
+        "unambiguousTouchedCases": 12,
+        "reactionRateExcludingAmbiguous": 0.5,
+        "breakRateExcludingAmbiguous": 0.4166666666666667,
+        "fullForwardWindowCases": 18,
+        "fullWindowTouchedCases": 11,
+        "fullWindowUnambiguousTouchedCases": 11,
+        "fullWindowReactionRateExcludingAmbiguous": 0.45454545454545453,
+        "fullWindowBreakRateExcludingAmbiguous": 0.45454545454545453,
+        "note": "Descriptive first-event test, not a profitable trading-strategy backtest. Swing level is available only at confirmationTime; same-candle target/break is marked ambiguous because OHLC cannot establish intrabar order; recent cases may have fewer than the full forwardBars."
+      },
+      "outcomes": {
+        "reaction_target_reached": 6,
+        "touch_no_target": 1,
+        "break_close": 5,
+        "no_touch": 10,
+        "ambiguous_same_bar": 0
+      }
+    }
+  },
+  "commonCutoffISO": "2026-10-12T07:00:00.000Z"
+}

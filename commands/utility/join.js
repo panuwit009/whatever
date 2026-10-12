@@ -1,89 +1,48 @@
-const { SlashCommandBuilder, Collection } = require('discord.js');
-
-const {
-	joinVoiceChannel,
-	getVoiceConnection,
-	createAudioPlayer,
-	createAudioResource,
-	VoiceConnectionStatus,
-} = require('@discordjs/voice');
-
-const path = require('path');
-
-function playJoinSound(player) {
-	const audioPath = path.join(
-		__dirname,
-		'../sounds/join.mp3'
-	);
-
-	const resource = createAudioResource(audioPath);
-
-	player.play(resource);
-}
+const { SlashCommandBuilder } = require('discord.js');
+const { joinChannel } = require('../../voiceService');
 
 module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('join')
-		.setDescription('เรียกบอทเข้าห้องที่เรากำลังอยู่'),
+    data: new SlashCommandBuilder()
+        .setName('join')
+        .setDescription('เรียกบอทเข้าห้องที่เรากำลังอยู่'),
 
-	async execute(interaction) {
-		const channel = interaction.member.voice.channel;
+    async execute(interaction) {
+        const channel = interaction.member.voice.channel;
 
-		if (!channel) {
-			return interaction.reply(
-				'มึงต้องเข้าห้องก่อนกูถึงจะตามมึงได้'
-			);
-		}
+        if (!channel) {
+            return interaction.reply(
+                'มึงต้องเข้าห้องก่อนกูถึงจะตามมึงได้'
+            );
+        }
 
-		await interaction.reply('มาละ');
+        await interaction.deferReply();
 
-		const oldConnection = getVoiceConnection(channel.guild.id);
+        try {
+            const connection = await joinChannel(
+                channel.guild,
+                channel
+            );
 
-		if (oldConnection) {
-			oldConnection.destroy();
-		}
+            // เก็บ connection ไว้เหมือนระบบเดิม
+            interaction.client.voiceConnections ??= new Map();
 
-		const connection = joinVoiceChannel({
-			channelId: channel.id,
-			guildId: channel.guild.id,
-			adapterCreator: channel.guild.voiceAdapterCreator,
-		});
+            interaction.client.voiceConnections.set(
+                channel.guild.id,
+                connection
+            );
 
-		interaction.client.voiceConnections ??= new Collection();
+            await interaction.editReply('มาละ');
 
-		interaction.client.voiceConnections.set(
-			channel.guild.id,
-			connection
-		);
+            console.log(
+                '[JOIN] เข้าห้องสำเร็จ:',
+                channel.name
+            );
+        } catch (error) {
+            console.error('[JOIN ERROR]', error);
 
-		const player = createAudioPlayer();
-
-		player.on('stateChange', (oldState, newState) => {
-			console.log(
-				'Player:',
-				oldState.status,
-				'->',
-				newState.status
-			);
-		});
-
-		player.on('error', error => {
-			console.error('PLAYER ERROR:', error);
-		});
-
-		connection.subscribe(player);
-
-		console.log('Voice status:', connection.state.status);
-
-		const checkConnection = setInterval(() => {
-			console.log('Voice status:', connection.state.status);
-
-			if (connection.state.status === VoiceConnectionStatus.Ready) {
-				clearInterval(checkConnection);
-
-				// เปิดบรรทัดนี้เมื่อต้องการให้เล่นเสียงตอน join
-				// playJoinSound(player);
-			}
-		}, 500);
-	},
+            await interaction.editReply(
+                'เข้าห้อง Voice ไม่สำเร็จ ลองใหม่อีกครั้ง'
+            );
+        }
+    },
 };

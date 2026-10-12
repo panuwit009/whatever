@@ -1,113 +1,150 @@
 const {
-	createAudioPlayer,
-	createAudioResource,
-	AudioPlayerStatus,
-} = require('@discordjs/voice');
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+} = require("@discordjs/voice");
 
 const players = new Map();
 const queues = new Map();
 const processing = new Set();
 
 function getPlayer(guildId) {
-	if (!players.has(guildId)) {
-		const player = createAudioPlayer();
+  if (!players.has(guildId)) {
+    const player = createAudioPlayer();
 
-		player.on('stateChange', (oldState, newState) => {
-			console.log(
-				'TTS Player:',
-				oldState.status,
-				'->',
-				newState.status
-			);
-		});
+    player.on("stateChange", (oldState, newState) => {
+      console.log(
+        "TTS Player:",
+        oldState.status,
+        "->",
+        newState.status
+      );
+    });
 
-		player.on('error', error => {
-			console.error('TTS PLAYER ERROR:', error);
-		});
+    player.on("error", (error) => {
+      console.error("TTS PLAYER ERROR:", error);
+    });
 
-		players.set(guildId, player);
-	}
+    players.set(guildId, player);
+  }
 
-	return players.get(guildId);
+  return players.get(guildId);
 }
 
 function connect(guildId, connection) {
-	const player = getPlayer(guildId);
-
-	connection.subscribe(player);
-
-	return player;
+  const player = getPlayer(guildId);
+  connection.subscribe(player);
+  return player;
 }
 
-function addToQueue(guildId, speakFunction) {
-	if (!queues.has(guildId)) {
-		queues.set(guildId, []);
-	}
+function addToQueue(
+  guildId,
+  speakFunction,
+  beforeAudioPath = null
+) {
+  if (!queues.has(guildId)) {
+    queues.set(guildId, []);
+  }
 
-	queues.get(guildId).push(speakFunction);
+  queues.get(guildId).push({
+    speakFunction,
+    beforeAudioPath,
+  });
 
-	processQueue(guildId);
+  processQueue(guildId);
+}
+
+// เล่นไฟล์เสียงและกำหนดระดับเสียงแยกกันได้
+function playAndWait(player, audioPath, volume = 1.0) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const cleanup = () => {
+      player.off(AudioPlayerStatus.Idle, onIdle);
+      player.off("error", onError);
+    };
+
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    };
+
+    const onIdle = () => finish();
+    const onError = (error) => finish(error);
+
+    player.once(AudioPlayerStatus.Idle, onIdle);
+    player.once("error", onError);
+
+    try {
+      const resource = createAudioResource(audioPath, {
+        inlineVolume: true,
+      });
+
+      resource.volume.setVolume(volume);
+      player.play(resource);
+    } catch (error) {
+      finish(error);
+    }
+  });
 }
 
 async function processQueue(guildId) {
-	if (processing.has(guildId)) {
-		return;
-	}
+  if (processing.has(guildId)) return;
 
-	const queue = queues.get(guildId);
+  const queue = queues.get(guildId);
+  if (!queue || queue.length === 0) return;
 
-	if (!queue || queue.length === 0) {
-		return;
-	}
+  const player = getPlayer(guildId);
+  processing.add(guildId);
 
-	const player = getPlayer(guildId);
-	const speakFunction = queue.shift();
+  try {
+    while (queue.length > 0) {
+      const task = queue.shift();
 
-	processing.add(guildId);
+      try {
+        // 1. สร้าง TTS ให้เสร็จก่อน
+        const ttsAudioPath = await task.speakFunction();
 
-	try {
-		// สร้าง TTS
-		const audioPath = await speakFunction();
+        console.log("สร้าง TTS แล้ว:", ttsAudioPath);
 
-		console.log('สร้าง TTS แล้ว:', audioPath);
+        // 2. เล่นเสียงแจ้งเตือนที่ระดับ 20%
+        if (task.beforeAudioPath) {
+          await playAndWait(
+            player,
+            task.beforeAudioPath,
+            0.2
+          );
+        }
 
-		// เล่นเสียง
-		const resource = createAudioResource(audioPath);
+        // 3. เล่นเสียง TTS ที่ระดับ 100%
+        await playAndWait(
+          player,
+          ttsAudioPath,
+          1.0
+        );
+      } catch (error) {
+        console.error("TTS QUEUE ERROR:", error);
+      }
+    }
+  } finally {
+    processing.delete(guildId);
 
-		player.play(resource);
-
-		// รอจนเสียงจบ
-		await new Promise((resolve, reject) => {
-			const onIdle = () => {
-				cleanup();
-				resolve();
-			};
-
-			const onError = error => {
-				cleanup();
-				reject(error);
-			};
-
-			const cleanup = () => {
-				player.off(AudioPlayerStatus.Idle, onIdle);
-				player.off('error', onError);
-			};
-
-			player.on(AudioPlayerStatus.Idle, onIdle);
-			player.on('error', onError);
-		});
-
-	} catch (error) {
-		console.error('TTS QUEUE ERROR:', error);
-	}
-
-	processing.delete(guildId);
-
-	processQueue(guildId);
+    // ตรวจสอบว่ามีงานใหม่ในคิวหรือไม่
+    if (queue.length > 0) {
+      processQueue(guildId);
+    }
+  }
 }
 
 module.exports = {
-	getPlayer,
-	connect,
-	addToQueue,
+  getPlayer,
+  connect,
+  addToQueue,
 };
