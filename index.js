@@ -1,106 +1,122 @@
-const fs = require('node:fs');
-const path = require('node:path');
+const fs = require("node:fs");
+const path = require("node:path");
 // Require the necessary discord.js classes
-const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
+const {
+  Client,
+  Collection,
+  Events,
+  GatewayIntentBits,
+  MessageFlags,
+} = require("discord.js");
 // const { token } = require('./config.json');
-require('dotenv').config();
+require("dotenv").config();
 const token = process.env.DISCORD_TOKEN;
 const mt5Service = require("./commands/utility/xm/mt5Service");
 const xmAlertService = require("./commands/utility/xm/alertService");
-const tts = require('./tts');
+
+const ttsEnabled = process.env.TTS_ENABLED === "true";
+const xmEnable = false;
 
 // Create a new client instance
 const client = new Client({
-	intents: [
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildVoiceStates,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.MessageContent
-	]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 // When the client is ready, run this code (only once).
 // The distinction between `client: Client<boolean>` and `readyClient: Client<true>` is important for TypeScript developers.
 // It makes some properties non-nullable.
-client.once(Events.ClientReady, async(readyClient) => {
-	console.log(`พร้อม! ตอนนนี้ login แล้วด้วยชื่อ ${readyClient.user.tag}`);
+client.once(Events.ClientReady, async (readyClient) => {
+  console.log(`พร้อม! ตอนนนี้ login แล้วด้วยชื่อ ${readyClient.user.tag}`);
 
-	try {
-        await xmAlertService.start(readyClient);
-        console.log("[XM Alert] ระบบแจ้งเตือนพร้อมทำงาน");
+  if (xmEnable) {
+    try {
+      await xmAlertService.start(readyClient);
+      console.log("[XM Alert] ระบบแจ้งเตือนพร้อมทำงาน");
     } catch (error) {
-        console.error("[XM Alert] เริ่มระบบไม่สำเร็จ:", error);
+      console.error("[XM Alert] เริ่มระบบไม่สำเร็จ:", error);
     }
+  }
 });
 
 // Log in to Discord with your client's token
 client.login(token);
 
-client.commands = new Collection(); 
+client.commands = new Collection();
 
-const foldersPath = path.join(__dirname, 'commands');
+const foldersPath = path.join(__dirname, "commands");
 const commandFolders = fs.readdirSync(foldersPath);
 for (const folder of commandFolders) {
-	const commandsPath = path.join(foldersPath, folder);
-	const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith('.js'));
-	for (const file of commandFiles) {
-		const filePath = path.join(commandsPath, file);
-		const command = require(filePath);
-		// Set a new item in the Collection with the key as the command name and the value as the exported module
-		if ('data' in command && 'execute' in command) {
-			client.commands.set(command.data.name, command);
-		} else {
-			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-		}
-	}
+  const commandsPath = path.join(foldersPath, folder);
+  const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter((file) => file.endsWith(".js"));
+  for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    // Set a new item in the Collection with the key as the command name and the value as the exported module
+    if ("data" in command && "execute" in command) {
+      client.commands.set(command.data.name, command);
+    } else {
+      console.log(
+        `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`,
+      );
+    }
+  }
 }
 
 client.on(Events.InteractionCreate, async (interaction) => {
-	if (!interaction.isChatInputCommand()) return;
-	const command = interaction.client.commands.get(interaction.commandName);
+  if (!interaction.isChatInputCommand()) return;
+  const command = interaction.client.commands.get(interaction.commandName);
 
-	if (!command) {
-		console.error(`No command matching ${interaction.commandName} was found.`);
-		return;
-	}
+  if (!command) {
+    console.error(`No command matching ${interaction.commandName} was found.`);
+    return;
+  }
 
-	try {
-		await command.execute(interaction);
-	} catch (error) {
-		console.error(error);
-		if (interaction.replied || interaction.deferred) {
-			await interaction.followUp({
-				content: 'There was an error while executing this command!',
-				flags: MessageFlags.Ephemeral,
-			});
-		} else {
-			await interaction.reply({
-				content: 'There was an error while executing this command!',
-				flags: MessageFlags.Ephemeral,
-			});
-		}
-	}
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({
+        content: "There was an error while executing this command!",
+        flags: MessageFlags.Ephemeral,
+      });
+    } else {
+      await interaction.reply({
+        content: "There was an error while executing this command!",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  }
 });
 
-mt5Service.start().catch((error) => {
-  console.error("[MT5] เริ่มต้นไม่สำเร็จ:", error.message);
-});
-
-client.ttsConfig = new Collection();
-
-const configPath = path.join(
-	__dirname,
-	'tts/config.json'
-);
-
-const savedConfig = JSON.parse(
-	fs.readFileSync(configPath, 'utf8')
-);
-
-for (const [guildId, config] of Object.entries(savedConfig)) {
-	client.ttsConfig.set(guildId, config);
+if (xmEnable) {
+  mt5Service.start().catch((error) => {
+    console.error("[MT5] เริ่มต้นไม่สำเร็จ:", error.message);
+  });
 }
 
-client.on(Events.MessageCreate, (message) => {
-	tts.handleMessage(message, client.ttsConfig);
-});
+if (ttsEnabled) {
+  const tts = require("./tts");
+  client.ttsConfig = new Collection();
+
+  const configPath = path.join(__dirname, "tts/config.json");
+
+  const savedConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+
+  for (const [guildId, config] of Object.entries(savedConfig)) {
+    client.ttsConfig.set(guildId, config);
+  }
+
+  client.on(Events.MessageCreate, (message) => {
+    tts.handleMessage(message, client.ttsConfig);
+  });
+} else {
+//console.log("[TTS] ระบบ TTS ปิดใช้งาน จากไฟล์ index.js");
+}
