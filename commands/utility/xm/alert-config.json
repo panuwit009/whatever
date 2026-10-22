@@ -9,6 +9,13 @@
           "direction": "above",
           "target": 4189,
           "createdAt": "2026-10-12T06:03:18.746Z"
+        },
+        {
+          "id": "1792478554629-vt5djy",
+          "symbol": "EURUSD",
+          "direction": "above",
+          "target": 1.12532,
+          "createdAt": "2026-10-20T06:42:34.629Z"
         }
       ]
     }
