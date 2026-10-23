@@ -15,7 +15,7 @@ const mt5Service = require("./commands/utility/xm/mt5Service");
 const xmAlertService = require("./commands/utility/xm/alertService");
 
 const ttsEnabled = process.env.TTS_ENABLED === "true";
-const xmEnable = false;
+const xmEnable = process.env.XM_ENABLED === "true";
 
 // Create a new client instance
 const client = new Client({
