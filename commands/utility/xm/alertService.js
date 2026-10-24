@@ -10,16 +10,9 @@ const {
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
-const ALERT_SOUND_PATH = path.join(
-  process.cwd(),
-  "commands",
-  "sounds",
-  "xmalert.mp3"
-);
-
 const mt5Service = require("./mt5Service");
-const provider = require("../../../tts/provider");
-const ttsPlayer = require("../../../tts/player");
+const alertAudioQueue = require("./alertAudioQueue");
+const { buildAlertAudio } = require("./alertAudioBuilder");
 const { joinChannel } = require("../../../voiceService");
 
 const CONFIG_PATH = path.join(__dirname, "alert-config.json");
@@ -205,7 +198,8 @@ function getTraderVoiceMember(guild) {
   return null;
 }
 
-async function speakAlert(guild, message) {
+async function speakAlert(guild, alert, directionText, targetText, actualText) {
+  // Keep the existing environment switch for backward compatibility.
   if (process.env.TTS_ENABLED !== "true") return;
 
   try {
@@ -229,13 +223,13 @@ async function speakAlert(guild, message) {
 
       if (!targetChannel) {
         console.log(
-          "[XM Alert TTS] ไม่พบห้อง Voice ที่มีสมาชิก Role trader"
+          "[XM Alert Audio] ไม่พบห้อง Voice ที่มีสมาชิก Role trader"
         );
         return;
       }
 
       console.log(
-        `[XM Alert TTS] กำลังเข้าห้อง ${targetChannel.name}`
+        `[XM Alert Audio] กำลังเข้าห้อง ${targetChannel.name}`
       );
 
       await joinChannel(guild, targetChannel);
@@ -244,20 +238,26 @@ async function speakAlert(guild, message) {
     const connection = getVoiceConnection(guild.id);
 
     if (!connection) {
-      console.log("[XM Alert TTS] ไม่พบ Voice connection");
+      console.log("[XM Alert Audio] ไม่พบ Voice connection");
       return;
     }
 
-    // ใช้ player และ queue เดิมสำหรับ TTS
-    ttsPlayer.connect(guild.id, connection);
+    const files = await buildAlertAudio({
+      symbol: alert.symbol,
+      directionText,
+      targetText,
+      actualText,
+    });
 
-    ttsPlayer.addToQueue(
-      guild.id,
-      () => provider.speak(message),
-      ALERT_SOUND_PATH
-    );
+    if (!files.length) {
+      console.warn("[XM Alert Audio] ไม่มีไฟล์เสียงสำหรับ Alert นี้");
+      return;
+    }
+
+    // ใช้คิวเสียง Alert แยกจาก TTS queue โดยสิ้นเชิง
+    alertAudioQueue.enqueue(guild.id, connection, files);
   } catch (error) {
-    console.error("[XM Alert TTS]", error);
+    console.error("[XM Alert Audio]", error);
   }
 }
 
@@ -327,10 +327,13 @@ async function notify(guild, alert, quote) {
       allowedMentions: { parse: [] },
     });
 
-    const ttsMessage =
-    `ราคา ${alert.symbol} ${directionText} ${targetText} แล้ว ราคาปัจจุบันอยู่ที่ ${actualText}`;
-
-    await speakAlert(guild, ttsMessage);
+    await speakAlert(
+      guild,
+      alert,
+      directionText,
+      targetText,
+      actualText
+    );
   } catch (error) {
     console.error("[XM Alert] ส่งแจ้งเตือนไม่สำเร็จ:", error);
   }

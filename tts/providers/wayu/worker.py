@@ -15,7 +15,7 @@ voices = [
     "m_teen_bright",
     "m_young_clear",
 ]
-voice = voices[11]  # เลือกเสียงที่ต้องการ
+voice = voices[6]  # เลือกเสียงที่ต้องการ
 
 print("Loading Wayu...", flush=True)
 
