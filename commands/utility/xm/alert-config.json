@@ -4,11 +4,11 @@
       "channelId": "1563330500570128444",
       "alerts": [
         {
-          "id": "1792797296903-udrxhi",
-          "symbol": "ETHUSD",
+          "id": "1792981246500-lg8y78",
+          "symbol": "GOLD",
           "direction": "below",
-          "target": 2304.11,
-          "createdAt": "2026-10-23T23:14:56.903Z"
+          "target": 3983.03,
+          "createdAt": "2026-10-26T02:20:46.500Z"
         }
       ]
     }
