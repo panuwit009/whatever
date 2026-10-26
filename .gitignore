@@ -2,3 +2,6 @@
 node_modules
 
 wayu-env/
+
+#ไฟล์เสียง tss
+worker-test.wav
